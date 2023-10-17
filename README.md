@@ -1,2 +1,5 @@
-# spring2021_ds6373
-Select projects from DS6373: Time Series in R
+# DS6373 Time Series
+Select projects from the DS6373: Time Series course
+
+## Course Description
+Explores serially correlated observations recorded over time and the theory and methods to appropriately model such data using several parametric and non-parametric models to both estimate population parameters and forecast future values. Students learn how to apply autoregressive, moving average, ARMA, and ARIMA models through lectures, light-board sessions, coding in R, real life data sets, and interviews with currently practicing industry professionals. Students practice working with the statistical package R in estimating and visualizing these models through the use of numerous real-world datasets. Stationary and non-stationary time series with many covariates are addressed. Students also estimate the spectral density to estimate frequencies in the data. Concludes with a look at a neural network application to time series data and compares the performance of these models with the parametric models mentioned above. 
