@@ -1,0 +1,1391 @@
+---
+title: "7330project"
+author: "Hollie"
+date: "7/17/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#libraries
+
+```{r}
+#library(ggplot2)
+#library(tswge)
+#library(imputeTS)
+#library(visdat)
+#library(nnfor)
+#library(forecast)
+#library(vars)
+#library(RColorBrewer)
+#library(orcutt)
+#library(dplyr)
+#library(tibbletime)
+#library(forcats)
+#library(magrittr)
+
+#install.packages("mongolite")
+#library(mongolite)
+
+```
+
+#dataset
+```{r}
+
+x <- read.csv("/Users/holliegardner/Desktop/msds/2021a_time series/project-covid19_forecasts/projectdata.csv")
+
+#datasets for semester
+x.f17 = x %>% filter(Semester == "Fall" & Year == "2017")
+x.s18 = x %>% filter(Semester == "Spring" & Year == "2018")
+x.f18 = x %>% filter(Semester == "Fall" & Year == "2018")
+x.s19 = x %>% filter(Semester == "Spring" & Year == "2019")
+x.f19 = x %>% filter(Semester == "Fall" & Year == "2019")
+
+#sum of gatecounts
+sum(x.f17$gatecount)
+sum(x.s18$gatecount)
+sum(x.f18$gatecount)
+sum(x.s19$gatecount)
+sum(x.f19$gatecount)
+
+#sum of ask us
+sum(x.f17$askus.in.person)
+sum(x.s18$askus.in.person)
+sum(x.f18$askus.in.person)
+sum(x.s19$askus.in.person)
+sum(x.f19$askus.in.person)
+
+#sum of ask us
+sum(x.f17$askus)
+sum(x.s18$askus)
+sum(x.f18$askus)
+sum(x.s19$askus)
+sum(x.f19$askus)
+
+#sum of ask us
+sum(x.f17$askus.chat.transactions)
+sum(x.s18$askus.chat.transactions)
+sum(x.f18$askus.chat.transactions)
+sum(x.s19$askus.chat.transactions)
+sum(x.f19$askus.chat.transactions)
+
+#sum of instruction sessions
+sum(x.f17$instruction.sessions)
+sum(x.s18$instruction.sessions)
+sum(x.f18$instruction.sessions)
+sum(x.s19$instruction.sessions)
+sum(x.f19$instruction.sessions)
+
+#sum of lib appt
+sum(x.f17$lib.appt)
+sum(x.s18$lib.appt)
+sum(x.f18$lib.appt)
+sum(x.s19$lib.appt)
+sum(x.f19$lib.appt)
+
+#sum of search sessions
+sum(x.f17$search.sessions)
+sum(x.s18$search.sessions)
+sum(x.f18$search.sessions)
+sum(x.s19$search.sessions)
+sum(x.f19$search.sessions)
+
+sum(x.f17$loans)
+sum(x.s18$loans)
+sum(x.f18$loans)
+sum(x.s19$loans)
+sum(x.f19$loans)
+
+```
+
+#Initial plots
+```{r}
+#instruction sessions
+plotts.wge(x$instruction.sessions)
+
+#chat transactions
+plotts.wge(x$askus.chat.transactions)
+
+#ask us in person
+plotts.wge(x$askus.in.person)
+
+#ask us transactions
+plotts.wge(x$askus)
+
+#search sessions
+plotts.wge(x$search.sessions)
+
+#gatecount
+plotts.wge(x$gatecount)
+
+#appoitnment
+plotts.wge(x$lib.appt)
+
+#loans
+plotts.wge(x$loans)
+```
+
+
+
+#Filtered for Fall and Spring trends
+```{r}
+tsx = x %>% filter(Semester == "Spring" | Semester == "Fall")
+tsx$Date = as.Date(tsx$Date)
+
+```
+
+#instruct realization and facet grid
+```{r}
+
+#Instruction Sessions fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=instruction.sessions, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Instruction Sessions for FY19-FY21") + xlab("Date") + ylab("Instruction Sessions")
+
+#grouped Instruction Sessions
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(instruction.sessions, na.rm = TRUE))
+
+#group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Instruction Sessions") + xlab("Semester Week Number") + ylab("Sessions") + geom_line(color="#5a6182",size=.5)
+
+View(group)
+View(tsx)
+
+```
+#Search realization and facet grid
+```{r}
+
+#Search Sessions fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=search.sessions, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Search Sessions for FY19-FY21") + xlab("Date") + ylab("Search Sessions")
+
+#grouped Search Sessions
+
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(search.sessions, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + 
+    geom_point(color="#5a6182",size=1.2) + 
+    facet_grid(fiscal.year~Semester) + 
+    theme(legend.position = "none") +   
+    ggtitle("Weekly Search Sessions") + 
+    xlab("Semester Week Number") + ylab("Sessions") + 
+    geom_line(color="#5a6182",size=.5) + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+```
+#Ask Us realization and facet grid
+```{r}
+View(x)
+
+#Ask Us fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=askus, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Ask Us Interactions for FY19-FY21") + xlab("Date") + ylab("Ask Us Interactions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+#grouped ask us transactions
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(askus, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Ask Us Transactions") + xlab("Semester Week Number") + ylab("Transactions") + geom_line(color="#5a6182",size=.5)
+
+```
+#chat realization and facet grid
+```{r}
+#chat transactions fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=askus.chat.transactions, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Chat Interactions for FY19-FY21") + xlab("Date") + ylab("Chat Interactions")
+
+#grouped ask us transactions
+tsx$weeknum = as.factor(tsx$weeknum)
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(askus.chat.transactions, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+View(group)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Chat Transactions") + xlab("Semester Week Number") + ylab("Transactions") + geom_line(color="#5a6182",size=.5)
+
+```
+#in person realization and facet grid
+```{r}
+
+#In Person fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=askus.in.person, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("In Person Interactions for FY19-FY21") + xlab("Date") + ylab("In Person Interactions")
+
+#grouped ask us transactions
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(askus.in.person, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13","14", "15", "16", "17", "18")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly In Person Transactions") + xlab("Semester Week Number") + ylab("Transactions") + geom_line(color="#5a6182",size=.5)
+
+```
+#consultations realization and facet grid
+```{r}
+#Consultations fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=lib.appt, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Consultations for FY19-FY21") + xlab("Date") + ylab("Consultations")
+
+#grouped Consultations
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(lib.appt, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Consultations") + xlab("Semester Week Number") + ylab("Sessions") + geom_line(color="#5a6182",size=.5)
+
+```
+#gate count realization and facet grid
+```{r}
+#Gate Counts fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=gatecount, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Gate Counts for FY19-FY21") + xlab("Date") + ylab("Gate Counts")
+
+#grouped Gate Counts
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(gatecount, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "w01", "w02", "w03", "w04", "w05", "w06", "w07", "w08", "w09", "w10", "w11", "w12", "w13","w14", "w15", "w16", "w17")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Gate Counts") + xlab("Semester Week Number") + ylab("Sessions") + geom_line(color="#5a6182",size=.5)
+View(group)
+
+```
+#Circulation Loans realization and grid
+```{r}
+#Loans fy19-fy21
+x$Date = as.Date(x$Date)
+x %>% filter(fiscal.year == "fy20" | fiscal.year =="fy19" | fiscal.year =="fy21") %>% 
+    ggplot(aes(x=Date, y=loans, color=fiscal.year)) +
+    geom_line(color="#ff8871") + theme(legend.position = "none") +
+    ggtitle("Loans for FY19-FY21") + xlab("Date") + ylab("Loans")
+
+#grouped Loans
+tsx$weeknum = as.numeric(tsx$weeknum)
+group = tsx %>% filter(weeknum != "SB") %>%
+  group_by(fiscal.year, Semester, weeknum) %>% 
+  summarise(total = sum(loans, na.rm = TRUE))
+
+group$weeknum <- as.factor(group$weeknum)
+
+group %>% 
+  mutate(weeknum = fct_relevel(weeknum, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18")) %>%
+  ggplot(aes(x=weeknum, y=total, group=1)) + geom_point(color="#5a6182",size=1.2) + facet_grid(fiscal.year~Semester)+ theme(legend.position = "none") +   ggtitle("Weekly Loans") + xlab("Semester Week Number") + ylab("Loans") + geom_line(color="#5a6182",size=.5)
+
+
+```
+
+
+## Begin Time Series Modeling
+
+```{r}
+#gate count 
+tsx$Date = as.Date(tsx$Date)
+
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$gatecount
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$gatecount, n.ahead = 346)
+f$b0
+
+```
+
+#VAR Model
+
+```{r}
+library(vars)
+#ccf plots
+ccf(ts$gatecount, ts$weeknum, type = "correlation", plot = T)
+ccf(ts$gatecount, ts$Day.of.week, type = "correlation", plot = T)
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$gatecount, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$gatecount, ts$Day.of.week), p=7, type = "trend")
+#checking the ASE for the predictions for Sp20
+preds= predict(fit.v,n.ahead=126)
+preds$fcst$y1[1:126]
+plot(seq(1,602),ts$gatecount, type = "l", xlim= c(0,740))
+points(seq((602-126+1),602,1),preds$fcst$y1[1:126,1],type = "l", col = "#ff8871")
+ASE.var.126=mean((ts$gatecount[(602-126+1):602]-preds$fcst$y1[1:126,1])^2)
+ASE.var.126
+
+#plot Sp2020 forecast using past obs
+plot(seq(1,602),ts$gatecount, type = "l",xlim = c(0,740), ylab = "Number of Visitors", xlab = "Days")
+points(seq((728-126+1),728,1),preds$fcst$y1[1:126,1],type = "l", col = "#ff8871")
+
+
+#Spring20 and Fall20 preds using VAR 
+preds2= predict(fit.v,n.ahead=(126+119))
+plot(seq(1,602),ts$gatecount, type = "l",xlim = c(0,800))
+points(seq((602-126-119+1),602,1),preds2$fcst$y1[1:(126+119),1],type = "l", col = "#ff8871")
+ASE.var.245 = mean((ts$gatecount[(602-245+1):602]-preds2$fcst$y1[1:245,1])^2)
+ASE.var.245
+
+#plot sp20 and fall20 forecast
+plot(seq(1,602),ts$gatecount, type = "l",xlim = c(0,900), ylab = "Number of Visitors", xlab = "Days")
+points(seq(602,(602+245-1),1),preds2$fcst$y1[1:245,1],type = "l", col = "#ff8871")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$gatecount, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$gatecount[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast plot
+plot(seq(1,602),ts$gatecount, type = "l",xlim = c(0,1000), ylab = "Number of Visitors", xlab = "Days", col="#3c4054")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+```
+
+
+#MLP Neural Network
+```{r}
+#new mlp neural network variable
+GC = ts$gatecount
+
+#mlpnn fit for data
+tGC = ts(GC[1:602])
+fit.GC= mlp(tGC, seasonal(7), reps=10, comb=c("mean"))
+fit.GC
+plot(fit.GC)
+
+#sp20 mlp ase check
+f = forecast(fit.GC, h = 126)
+plot(GC[(602-126+1):602],type = "l", ylab="visitors", col="gray", xlab = "Days")
+lines(seq(1,126,1), f$mean, col = "blue")
+ASE.mlp.126 = mean((GC[(602-126+1):602]-f$mean)^2)
+ASE.mlp.126
+
+#sp20+f20 ase check
+f.245 = forecast(fit.GC, h = 245)
+plot(GC[(602-245+1):602],type = "l", ylab="visitors", col="gray", xlab = "Days")
+lines(seq(1,245,1),f.245$mean, col = "blue")
+ASE.mlp.245 = mean((GC[(602-245+1):602]-f.245$mean)^2)
+ASE.mlp.245
+
+##NN of visitors, multiple regressors - Spring 2020
+set.seed(45)
+tGC = ts(ts$gatecount[1:(602-126)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn
+plot(fit.nn)
+
+f.nn = forecast(fit.nn, h=126, xreg = tGCx)
+plot(ts$gatecount[(602-126+1):602],type = "l", ylab="Number of Visitors", xlab ="Days")
+lines(seq(1,126),f.nn$mean, col = "red")
+ASE.nn.126 = mean((ts$gatecount[(602-126+1):602]-f.nn$mean)^2)
+ASE.nn.126
+
+#Fall and Spring 2020
+set.seed(45)
+tGC = ts(ts$gatecount[1:(602-245)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.245 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.245
+plot(fit.nn.245)
+f.nn.245 = forecast(fit.nn.245, h=245, xreg = tGCx)
+plot(ts$gatecount[(602-245+1):602],type = "l", ylab="Number of Visitors", xlab ="Days")
+lines(seq(1,245,1),f.nn.245$mean, col = "red")
+ASE.nn.245 = mean((ts$gatecount[(602-245+1):602]-f.nn.245$mean)^2)
+ASE.nn.245
+
+```
+
+```{r}
+#ensemble forecast for Spring 2020
+ensemble = (f.nn$mean + preds$fcst$y1[1:126])/2
+plot(ts$gatecount, type = "l", xlim = c(0,800))
+lines(seq(603,(602+126),1), ensemble, col="#ff8871")
+
+ASE.ens.126 = mean((ts$gatecount[(602-126+1):602]-ensemble)^2)
+ASE.ens.126
+
+sum(ensemble)
+
+#ensemble forecast for Spring 2020 and Fall 2020
+ensemble.245 = (f.nn.245$mean + preds2$fcst$y1[1:245])/2
+
+plot(ts$gatecount, type = "l", xlim = c(0,900))
+lines(seq(603,(602+245),1), ensemble.245, col="#ff8871")
+
+ASE.ens.245 = mean((ts$gatecount[(602-245+1):602]-ensemble.245)^2)
+ASE.ens.245
+
+sum(ensemble.245)
+springcounts = sum(ensemble.245[1:126])
+springcounts
+fallcounts = sum(ensemble.245[127:245])
+fallcounts
+
+```
+
+##MLP NN - Sp20, Fall20, Sp21
+
+
+```{r}
+
+#Sp20, F20, Sp21 ASE check
+set.seed(45)
+tGC = ts(ts$gatecount[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$gatecount[(602-364+1):602],type = "l", ylab="Number of Visitors", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$gatecount[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+
+plot(ts$gatecount, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$gatecount[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+## TS for Search Sessions
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$search.sessions
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$search.sessions, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$search.sessions, ts$Day.of.week, ts$weeknum), type="both")
+fit.v = VAR(cbind(ts$search.sessions, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$search.sessions, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$search.sessions[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$search.sessions, type = "l",xlim = c(0,1000), ylab = "Number of Visitors", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$search.sessions[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$search.sessions[(602-364+1):602],type = "l", ylab="Number of Visitors", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$search.sessions[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$search.sessions, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$search.sessions[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+## TS for Ask Us Transactions
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$loans
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$askus, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$askus, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$askus, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$askus, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$askus[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$askus, type = "l",xlim = c(0,1000), ylab = "Ask Us Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$askus[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$askus[(602-364+1):602],type = "l", ylab="Ask Us Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$askus[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$askus, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$askus[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+
+## TS for Chat Transactions
+
+```{r}
+
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$askus.chat.transactions
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$askus.chat.transactions, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$askus.chat.transactions, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$askus.chat.transactions, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$askus.chat.transactions, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$askus.chat.transactions[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$askus.chat.transactions, type = "l",xlim = c(0,1000), ylab = "Chat Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$askus.chat.transactions[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$askus.chat.transactions[(602-364+1):602],type = "l", ylab="Chat Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$askus.chat.transactions[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$askus.chat.transactions, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$askus.chat.transactions[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+
+## TS for In Person Interactions
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$askus.in.person
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$askus.in.person, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$askus.in.person, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$askus.in.person, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$askus.in.person, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$askus.in.person[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$askus.in.person, type = "l",xlim = c(0,1000), ylab = "In Person Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$askus.in.person[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$askus.in.person[(602-364+1):602],type = "l", ylab="In Person Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$askus.in.person[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$askus.in.person, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$askus.in.person[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+
+## TS for Librarian Consultations
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$lib.appt
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$lib.appt, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$lib.appt, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$lib.appt, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$lib.appt, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$lib.appt[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$lib.appt, type = "l",xlim = c(0,1000), ylab = "In Person Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$lib.appt[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$lib.appt[(602-364+1):602],type = "l", ylab="In Person Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$lib.appt[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$lib.appt, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$lib.appt[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+
+
+## TS for Instruction Sessions
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+tsx$Date = as.Date(tsx$Date)
+
+#linear regression for fall/spring
+w=ts$instruction.sessions
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$instruction.sessions, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$instruction.sessions, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$instruction.sessions, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$instruction.sessions, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$instruction.sessions[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$instruction.sessions, type = "l",xlim = c(0,1000), ylab = "In Person Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$instruction.sessions[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$instruction.sessions[(602-364+1):602],type = "l", ylab="In Person Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$instruction.sessions[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$instruction.sessions, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$instruction.sessions[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+
+```
+## TS for Loans
+
+```{r}
+#creating ts dataframe with range up until COVID semester
+ts =filter(tsx, Date >= as.Date("2017-06-01"), Date <= as.Date("2019-12-31"))
+
+#linear regression for fall/spring
+w=ts$loans
+t = seq(1,602,1)
+df = data.frame(w = w, t= t)
+fit = lm(w~t, data = df)
+summary(fit)
+plot(fit)
+
+#cochrane orcutt test
+cfit = cochrane.orcutt(fit) 
+summary(cfit)
+
+#signal plus noise
+f = fore.sigplusnoise.wge(ts$loans, n.ahead = 346)
+f$b0
+
+#change to factor
+ts$Day.of.week = as.factor(ts$Day.of.week)
+ts$weeknum = as.factor(ts$weeknum)
+
+#VAR Select
+VARselect(cbind(ts$loans, ts$Day.of.week), type="both")
+fit.v = VAR(cbind(ts$loans, ts$Day.of.week), p=7, type = "trend")
+
+#Sp20, Fall20, Sp21 preds using VAR
+preds3= predict(fit.v,n.ahead=(126+119+119))
+plot(seq(1,602),ts$loans, type = "l",xlim = c(0,1000))
+points(seq((602-126-119-119+1),602,1),preds3$fcst$y1[1:(126+119+119),1],type = "l", col = "#ff8871")
+ASE.var.364 = mean((ts$loans[(602-344+1):602]-preds3$fcst$y1[1:364,1])^2)
+ASE.var.364
+
+#Sp20, Fall20, Sp21 forecast VAR plot
+plot(seq(1,602),ts$loans, type = "l",xlim = c(0,1000), ylab = "Ask Us Interactions", xlab = "Days")
+points(seq(602,(602+364-1),1),preds3$fcst$y1[1:364,1],type = "l", col = "#ff8871")
+
+#Sp20, F20, Sp21 nn ASE check
+set.seed(45)
+tGC = ts(ts$loans[1:(602-364)])
+tGCx = data.frame(week = ts(ts$weeknum), day = ts(ts$Day.of.week)) 
+fit.nn.364 = mlp(tGC, xreg = tGCx, reps = "7", comb = "mean")
+fit.nn.364
+plot(fit.nn.364)
+f.nn.364 = forecast(fit.nn.364, h=364, xreg = tGCx)
+plot(ts$loans[(602-364+1):602],type = "l", ylab="Ask Us Interactions", xlab ="Days")
+lines(seq(1,364,1),f.nn.364$mean, col = "red")
+ASE.nn.364 = mean((ts$loans[(602-364+1):602]-f.nn.364$mean)^2)
+ASE.nn.364
+
+#ensemble forecast for s20, f20, s21
+ensemble.364 = (f.nn.364$mean + preds3$fcst$y1[1:364])/2
+plot(ts$loans, type = "l", xlim = c(0,1000))
+lines(seq(603,(602+364),1), ensemble.364, col="#ff8871")
+
+ASE.ens.364 = mean((ts$loans[(602-364+1):602]-ensemble.364)^2)
+ASE.ens.364
+
+#semester forecast counts
+sum(ensemble.364)
+springcounts = sum(ensemble.364[1:126])
+springcounts
+fallcounts = sum(ensemble.364[127:245])
+fallcounts
+spring21counts = sum(ensemble.364[246:364])
+spring21counts
+```
+
+## Sum of Semester Actual Counts
+
+```{r}
+#create datasets for semester
+sp20 = tsx %>% filter(Semester == "Spring" & Year == "2020")
+f20 = tsx %>% filter(Semester == "Fall" & Year == "2020")
+sp21 = tsx %>% filter(Semester == "Spring" & Year == "2021")
+
+sum(sp20$search.sessions)
+sum(f20$search.sessions)
+sum(sp21$search.sessions)
+
+sum(sp20$gatecount)
+sum(f20$gatecount)
+sum(sp21$gatecount)
+
+sum(sp20$askus)
+sum(f20$askus)
+sum(sp21$askus)
+
+sum(sp20$askus.in.person)
+sum(f20$askus.in.person)
+sum(sp21$askus.in.person)
+
+sum(sp20$askus.chat.transactions)
+sum(f20$askus.chat.transactions)
+sum(sp21$askus.chat.transactions)
+
+sum(sp20$lib.appt)
+sum(f20$lib.appt)
+sum(sp21$lib.appt)
+
+sum(sp20$instruction.sessions)
+sum(f20$instruction.sessions)
+sum(sp21$instruction.sessions)
+
+sum(sp20$loans)
+sum(f20$loans)
+sum(sp21$loans)
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(forcats)
+
+p <- read.csv("/Users/holliegardner/Desktop/msds/2021a_time series/project-covid19_forecasts/project-results.csv")
+p = p[1:4]
+
+p$Semester = as.factor(p$Semester)
+
+# Line Plot - Instruction Sessions
+data = p %>% filter(Item == "Instruction Sessions")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Instruction Sessions: Forecast vs Actual") + 
+      ylab("Instruction Sessions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Gate Counts
+data = p %>% filter(Item == "Gate Counts")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Gate Counts: Forecast vs Actual") + 
+      ylab("Gate Counts") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Chat Interactions
+data = p %>% filter(Item == "Chat Interactions " )
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Chat Interactions: Forecast vs Actual") + 
+      ylab("Chat Interactions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - In Person Interactions
+data = p %>% filter(Item == "In Person Interactions")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("In Person Interactions: Forecast vs Actual") + 
+      ylab("In Person Interactions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Search Sessions
+data = p %>% filter(Item == "Search Sessions")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Primo Search Sessions: Forecast vs Actual") + 
+      ylab("Search Sessions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Librarian Consultations
+data = p %>% filter(Item == "Librarian Consultations")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Librarian Consultations: Forecast vs Actual") + 
+      ylab("Librarian Consultations") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Ask Us Transactions
+data = p %>% filter(Item == "Ask Us Transactions")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Ask Us Transactions: Forecast vs Actual") + 
+      ylab("Ask Us Transactions") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+# Line Plot - Loans
+data = p %>% filter(Item == "Loans")
+data %>% mutate(Semester = fct_relevel(Semester, "Spring 2020", "Fall 2020", "Spring 2021")) %>% 
+  mutate(Type = fct_relevel(Type, "Forecast", "Actual")) %>%
+  ggplot(aes(x = Semester, y = Count, colour = Type, group = Type)) + geom_line(size = 1.5) + geom_point(size=3) +
+      scale_color_manual(values=c("#ff8871", "#5a6182")) + ggtitle("Loans: Forecast vs Actual") + 
+      ylab("Loans") + 
+    scale_y_continuous(labels = scales::comma) + 
+    theme(
+        panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "#fcf2f0"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "#fcf2f0"),
+        plot.background = element_rect(fill = "white"),
+        strip.background = element_rect(colour = "white", fill = "white"),
+        text = element_text(color = "#3c4054"), axis.text = element_text(color = "#3c4054"))
+
+```
+
+
+```{r}
+
+p <- read.csv("~/Desktop/project-results.csv")
+p = p[1:4]
+g = p
+View(g)
+
+#instruction 
+g %>% filter(Item == "Instruction Sessions") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type, label=Count)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) + 
+          ggtitle("Instruction Sessions: Forecast vs Actual") +
+          ylab("Sessions") + 
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#chat 
+g %>% filter(Item == "Chat Interactions") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +  ylim(0,2100) +
+          ggtitle("Chat Interactions: Forecast vs Actual") +
+          ylab("Interactions") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#loans
+g %>% filter(Item == "Loans") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("Material Loans: Forecast vs Actual") +
+          ylab("Loans") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#gate counts
+g %>% filter(Item == "Gate Counts") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("Fondren Library Gate Counts: Forecast vs Actual") +
+          ylab("Gate Counts") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#search sessions
+g %>% filter(Item == "Search Sessions") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("Primo Search Sessions: Forecast vs Actual") +
+          ylab("Sessions") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#in person
+g %>% filter(Item == "In Person Interactions") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("Ask Us In-Person Interactions: Forecast vs Actual") +
+          ylab("Interactions") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#consultations
+g %>% filter(Item == "Librarian Consultations") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("Librarian Consultations: Forecast vs Actual") +
+          ylab("Consultations") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+#ask us
+g %>% filter(Item == "Ask Us Transactions") %>% 
+      mutate(Semester = fct_relevel(Semester, "Fall 2017", "Spring 2018", "Fall 2018", "Spring 2019", "Fall 2019", "Spring 2020", "Fall 2020", "Spring 2021")) %>%
+      ggplot(aes(x = Semester, y = Count, colour = Type, group = Type, linetype = Type)) + 
+        geom_line(size = 1.2) + geom_point(size=1.5) +
+          scale_color_manual(values=c("#354ca1", "#cc0035")) +
+          ggtitle("All Ask Us Transactions: Forecast vs Actual") +
+          ylab("Transactions") + scale_y_continuous(labels = scales::comma) +
+          theme(
+            panel.background = element_rect(fill = "white", colour = "#FFFFFF", size = 1, linetype = "solid"),
+            panel.grid.major = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"), 
+            panel.grid.minor = element_line(size = 0.1, linetype = 'solid', colour = "#dddddd"),
+            plot.background = element_rect(fill = "white"),
+            strip.background = element_rect(colour = "white", fill = "white"),
+            text = element_text(color = "#333333"), axis.text = element_text(color = "#333333"),
+            axis.title.x = element_blank(), axis.text.x = element_text(angle=45, vjust = (.9), hjust = .95))
+
+
+```
+  
+  
+  
